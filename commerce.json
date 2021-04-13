@@ -1,0 +1,1860 @@
+{
+    "code": "commerce-cloud",
+    "specVersion": 1,
+    "version": "a0099",
+    "name": "Commerce Cloud",
+    "description": "Commerce Cloud",
+    "lifecycle": "ACTIVE",
+    "builderImage": "cb/customized-commerce-builder:0.7.3.14",
+    "builderHelperImage": "kraken/builder-status-side-container:20190325-090824-12-1903",
+    "operatorImage": "cb/hybris-operator:0.4.5.29",
+    "apacheIngressImage": "cb/ingress-apache2:0.4.5.12",
+    "jobsImage": "cb/hcs-jobs:1.0.12",
+    "dindImage": "kraken/mt-dind:19.03-dind-4",
+    "dnsCacheImage": "cb/dnscache:2",
+    "defaultHybrisProperties":
+    {
+        "azure.hotfolder.storage.account.connection-string": "DefaultEndpointsProtocol=https;AccountName=${HOTFOLDER_STORAGE_NAME};AccountKey=${HOTFOLDER_STORAGE_ACCESS_KEY};EndpointSuffix=${BLOB_STORAGE_SERVICE_SUFFIX}",
+        "azure.hotfolder.storage.account.name": "${HOTFOLDER_STORAGE_NAME}",
+        "db.password": "${DB_PASSWORD}",
+        "media.default.storage.strategy": "cloudAzureBlobStorageStrategy",
+        "businessmetrics.azure.container": "businessmetrics",
+        "businessmetrics.active": "${BUSINESS_METRICS_ACTIVE}",
+        "db.username": "${DB_USERNAME}",
+        "modelt.environment.code": "${ENVIRONMENT_CODE}",
+        "modelt.project.code": "${PROJECT_CODE}",
+        "modelt.customer.code":"${CUSTOMER_CODE}",
+        "db.driver": "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+        "media.globalSettings.cloudAzureBlobStorageStrategy.connection": "DefaultEndpointsProtocol=https;AccountName=${MEDIA_STORAGE_NAME};AccountKey=${MEDIA_STORAGE_ACCESS_KEY};EndpointSuffix=${BLOB_STORAGE_SERVICE_SUFFIX}",
+        "media.globalSettings.cloudAzureBlobStorageStrategy.public.base.url": "https://${MEDIA_STORAGE_NAME}.${BLOB_STORAGE_SERVICE_ENDPOINT}/",
+        "modelt.environment.type": "${PERSONA_RESTRICTION_NAME}",
+        "businessmetrics.account.externalTenantId": "MT_TEMP-${PROJECT_CODE}-${ENVIRONMENT_CODE}",
+        "media.globalSettings.cloudAzureBlobStorageStrategy.local.cache": "true",
+        "businessmetrics.azure.autocreatecontainer": "true",
+        "businessmetrics.account.license": "MT_TEMP-UNDEFINED",
+        "businessmetrics.account.contractCurrency": "MT_TEMP-UNDEFINED",
+        "businessmetrics.azure.connection": "DefaultEndpointsProtocol=https;AccountName=${BUSINESS_METRICS_STORAGE_NAME};AccountKey=${BUSINESS_METRICS_STORAGE_ACCESS_KEY};EndpointSuffix=${BLOB_STORAGE_SERVICE_SUFFIX}",
+        "db.url": "jdbc:sqlserver://${SQL_SERVER}.${DATABASE_SERVICE_ENDPOINT}:1433;database=${DATABASE_NAME}",
+        "modelt.licence.id":"CCV2-${CUSTOMER_CODE}-${PROJECT_CODE}-${ENVIRONMENT_CODE}"
+    },
+    "applicationConfigurationTemplate":
+    {
+        "name": "Commerce cloud",
+        "description": "Configuration to customize the hybris commerce installation.",
+        "services": [
+            {
+                "code": "hybris",
+                "parameters":
+                {
+                    "git": {}
+                }
+            }
+        ]
+    },
+    "environmentTemplates":
+    {
+        "development":
+        {
+            "name": "Development",
+            "description": "For development purposes",
+            "parameters": {},
+            "media_storages": [
+                {
+                    "code": "medias",
+                    "name": "Medias",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "ENVIRONMENT"
+                },
+                {
+                    "code": "snapshots",
+                    "name": "Snapshots",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "PROJECT"
+                },
+                {
+                    "code": "business_metrics",
+                    "name": "Business metrics",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "PROJECT"
+                },
+                {
+                    "code": "hotfolders",
+                    "name": "Hot folders",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "PUBLIC"
+                },
+                {
+                    "code": "logs",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "PUBLIC"
+                }
+            ],
+            "database_servers": [
+                {
+                    "code": "server"
+                }
+            ],
+            "database_schemas": [
+                {
+                    "code": "db",
+                    "database_server":
+                    {
+                        "code": "server"
+                    },
+                    "database_performance": "MEDIUM"
+                }
+            ],
+            "firewallrules": [
+                {
+                    "code": "https_in_dmz_master",
+                    "state": "present",
+                    "name": "HTTPs incoming from DMZ to masters",
+                    "protocol": "tcp",
+                    "application": "https",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "DmzEnvironment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterMasters",
+                        "ports": "443,4443"
+                    },
+                    "priority": 100,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_cluster_subnet",
+                    "state": "present",
+                    "name": "Any incoming from cluster subnet",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "priority": 110,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_cluster_subnet_to_VNet",
+                    "state": "present",
+                    "name": "Any incoming from MS virtual IP",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "168.63.129.16/32"
+                    },
+                    "destination":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "priority": 111,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_VNet_to_cluster_subnet",
+                    "state": "present",
+                    "name": "Any incoming from VNet to MS Virtual IP",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "destination":
+                    {
+                        "cidr": "168.63.129.16/32"
+                    },
+                    "priority": 112,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_subnet_to_cluster_subnet",
+                    "state": "present",
+                    "name": "Any incoming from VNet to cluster subnet",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "priority": 113,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+				{
+                    "code": "any_in_cluster_subnet_to_subnet",
+                    "state": "present",
+                    "name": "Any incoming from cluster subnet to VNet",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "destination":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "priority": 113,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "ssh_in_dmz",
+                    "state": "present",
+                    "name": "SSH incoming from DMZ",
+                    "protocol": "tcp",
+                    "application": "ssh",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "DmzEnvironment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0",
+                        "ports": "22"
+                    },
+                    "priority": 120,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_subnet",
+                    "state": "present",
+                    "name": "Anything coming from the subnet",
+                    "protocol": "tcp",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "priority": 140,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "loadbalancer_in",
+                    "state": "present",
+                    "name": "Anything coming from the loadbalancer",
+                    "protocol": "tcp",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "AzureLoadBalancer"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "priority": 150,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "all_in_deny_to_master",
+                    "state": "present",
+                    "name": "Deny all incoming from anywhere to masters",
+                    "protocol": "tcp",
+                    "application": "https",
+                    "direction": "inbound",
+                    "action": "deny",
+                    "source":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterMasters"
+                    },
+                    "priority": 160,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "http_in_any",
+                    "state": "present",
+                    "name": "HTTP incoming from anywhere",
+                    "protocol": "tcp",
+                    "application": "http",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0",
+                        "ports": "80"
+                    },
+                    "priority": 170,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "https_in_any",
+                    "state": "present",
+                    "name": "HTTPs incoming from anywhere",
+                    "protocol": "tcp",
+                    "application": "https",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0",
+                        "ports": "443"
+                    },
+                    "priority": 180,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "all_vnets_in_to_any",
+                    "state": "present",
+                    "name": "All incoming from Vnet to Vent",
+                    "protocol": "any",
+                    "application": "all",
+                    "direction": "inbound",
+                    "action": "deny",
+                    "source":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "destination":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "priority": 3000,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                }
+            ],
+            "clusters": [
+                {
+                    "state": "present",
+                    "code": "kub",
+                    "masterCount": 1,
+                    "masterVmType": "Standard_E2s_v3",
+                    "minWorkerCount": 2,
+                    "maxWorkerCount": 20,
+                    "vmType": "Standard_F8s_v2",
+                    "name": "kubernetes",
+                    "parameters": {}
+                }
+            ],
+            "service_deployments": [
+                {
+                    "code": "default",
+                    "parameters": {}
+                },
+                {
+                    "code": "hcs_common",
+                    "parameters":
+                    {
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_admin",
+                    "requests":
+                    {
+                        "cpu": "6",
+                        "memory": "8Gi"
+                    },
+                    "parameters":
+                    {
+                        "customer-properties": [],
+                        "initialpassword": [
+                            {
+                                "uid": "admin",
+                                "password": ""
+                            },
+                            {
+                                "uid": "anonymous",
+                                "password": ""
+                            }
+                        ]
+                    }
+                },
+                {
+                    "code": "hcs_platform_accstorefront",
+                    "name": "Storefront",
+                    "replicas": 1,
+                    "requests":
+                    {
+                        "cpu": "2",
+                        "memory": "5Gi"
+                    },
+                    "k8sServiceName": "accstorefront",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "accstorefront",
+                        "endpoint-code": "storefront",
+                        "endpoint-name": "Storefront",
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_platform_api",
+                    "name": "API",
+                    "replicas": 1,
+                    "requests":
+                    {
+                        "cpu": "6",
+                        "memory": "6Gi"
+                    },
+                    "k8sServiceName": "api",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "api",
+                        "endpoint-code": "api",
+                        "endpoint-name": "API",
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_platform_backoffice",
+                    "name": "Backoffice",
+                    "replicas": 1,
+                    "requests":
+                    {
+                        "cpu": "2",
+                        "memory": "5Gi"
+                    },
+                    "k8sServiceName": "backoffice",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "backoffice",
+                        "endpoint-code": "backoffice",
+                        "endpoint-name": "Backoffice",
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_platform_backgroundProcessing",
+                    "name": "Background processing",
+                    "replicas": 1,
+                    "requests":
+                    {
+                        "cpu": "2",
+                        "memory": "4Gi"
+                    },
+                    "k8sServiceName": "backgroundprocessing",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "backgroundprocessing",
+                        "endpoint-code": "processing",
+                        "endpoint-name": "Background Processing",
+                        "stop-before-snapshot": true,
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_search_solr",
+                    "name": "Solr",
+                    "replicas": 1,
+                    "storageClass": "managed-premium",
+                    "requests":
+                    {
+                        "cpu": "1",
+                        "memory": "1Gi",
+                        "storage": "10Gi"
+                    },
+                    "k8sServiceName": "solr",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "solr",
+                        "endpoint-code": "solr",
+                        "endpoint-name": "Solr"
+                    }
+                },
+                {
+                    "code": "hcs_search_zookeeper",
+                    "name": "Zookeeper",
+                    "replicas": 3,
+                    "storageClass": "managed-premium",
+                    "requests":
+                    {
+                        "cpu": "200m",
+                        "memory": "500Mi",
+                        "storage": "5Gi"
+                    },
+                    "k8sServiceName": "zookeeper"
+                },
+                {
+                    "code": "logging_kibana",
+                    "name": "Kibana",
+                    "k8sServiceName": "logging/kibana",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "logs",
+                        "endpoint-customer-readonly": true,
+                        "endpoint-access": "ALLOW_ALL",
+                        "endpoint-code": "kibana",
+                        "endpoint-name": "Logging"
+                    }
+                },
+                {
+                    "code": "hcs_image_processing",
+                    "name": "Image Processing",
+                    "k8sServiceName": "imageprocessing",
+                    "replicas": 1,
+                    "requests": {
+                        "cpu": "1",
+                        "memory": "1Gi"
+                    }
+                },
+                {
+                    "code": "hcs_js_apps",
+                    "name": "JS Storefront",
+                    "replicas": 1,
+                    "requests":
+                    {
+                        "cpu": 1,
+                        "memory": "1Gi"
+                    },
+                    "k8sServiceName": "jsapps",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "jsapps",
+                        "endpoint-customer-readonly": false,
+                        "endpoint-code": "jsapps",
+                        "endpoint-name": "JS Storefront"
+                    }
+                },
+                {
+                    "code": "hcs_js_apps_ssr",
+                    "name": "JS SSR Storefront",
+                    "requests":
+                    {
+                        "cpu": 1,
+                        "memory": "1Gi"
+                    }
+                },
+             {
+                 "code": "apache_ingress",
+                 "name": "Apache Ingress",
+                 "requests":
+                 {
+                     "cpu": "150m",
+                     "memory": "300Mi"
+                 },
+                 "k8sServiceName": "apache2-igc",
+				 "replicas": 2
+			 },
+                {
+                    "code": "activegate",
+                    "name": "Dynatrace ActiveGate",
+                    "replicas": 1,
+                    "storageClass": "default",
+                    "requests": {
+                        "cpu": 2,
+                        "memory": "4Gi",
+                        "storage": "100Gi"
+                    },
+                    "k8sServiceName": "dynatrace/activegate",
+                    "parameters": {
+                        "create-endpoint": true,
+                        "dns-label": "activegate",
+                        "endpoint-code": "activegate",
+                        "endpoint-name": "Dynatrace ActiveGate",
+                        "endpoint-access": "ALLOW_ALL",
+                        "endpoint-customer-hidden": true
+                    }
+                }
+            ],
+            "webproxies": [
+                {
+                    "code": "public",
+                    "name": "Default",
+                    "access": "allow_all"
+                }
+            ]
+        },
+        "staging":
+        {
+            "name": "Staging",
+            "description": "For staging purposes",
+            "parameters": {},
+            "media_storages": [
+                {
+                    "code": "medias",
+                    "name": "Medias",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "ENVIRONMENT"
+                },
+                {
+                    "code": "snapshots",
+                    "name": "Snapshots",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "PROJECT"
+                },
+                {
+                    "code": "business_metrics",
+                    "name": "Business metrics",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "PROJECT"
+                },
+                {
+                    "code": "hotfolders",
+                    "name": "Hot folders",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "PUBLIC"
+                },
+                {
+                    "code": "logs",
+                    "replication": "STANDARD_LRS",
+                    "access_restriction": "PUBLIC"
+                }
+
+            ],
+            "database_servers": [
+                {
+                    "code": "server"
+                }
+            ],
+            "database_schemas": [
+                {
+                    "code": "db",
+                    "database_server":
+                    {
+                        "code": "server"
+                    },
+                    "database_performance": "MEDIUM_PLUS"
+                }
+            ],
+            "firewallrules": [
+                {
+                    "code": "https_in_dmz_master",
+                    "state": "present",
+                    "name": "HTTPs incoming from DMZ to masters",
+                    "protocol": "tcp",
+                    "application": "https",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "DmzEnvironment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterMasters",
+                        "ports": "443,4443"
+                    },
+                    "priority": 100,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_cluster_subnet",
+                    "state": "present",
+                    "name": "Any incoming from cluster subnet",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "priority": 110,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_cluster_subnet_to_VNet",
+                    "state": "present",
+                    "name": "Any incoming from MS virtual IP",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "168.63.129.16/32"
+                    },
+                    "destination":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "priority": 111,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_VNet_to_cluster_subnet",
+                    "state": "present",
+                    "name": "Any incoming from VNet to MS Virtual IP",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "destination":
+                    {
+                        "cidr": "168.63.129.16/32"
+                    },
+                    "priority": 112,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_subnet_to_cluster_subnet",
+                    "state": "present",
+                    "name": "Any incoming from VNet to cluster subnet",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "priority": 113,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+				{
+                    "code": "any_in_cluster_subnet_to_subnet",
+                    "state": "present",
+                    "name": "Any incoming from VNet to cluster subnet",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "destination":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "priority": 113,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "ssh_in_dmz",
+                    "state": "present",
+                    "name": "SSH incoming from DMZ",
+                    "protocol": "tcp",
+                    "application": "ssh",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "DmzEnvironment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0",
+                        "ports": "22"
+                    },
+                    "priority": 120,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_subnet",
+                    "state": "present",
+                    "name": "Anything coming from the subnet",
+                    "protocol": "tcp",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "priority": 140,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "loadbalancer_in",
+                    "state": "present",
+                    "name": "Anything coming from the loadbalancer",
+                    "protocol": "tcp",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "AzureLoadBalancer"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "priority": 150,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "all_in_deny_to_master",
+                    "state": "present",
+                    "name": "Deny all incoming from anywhere to masters",
+                    "protocol": "tcp",
+                    "application": "https",
+                    "direction": "inbound",
+                    "action": "deny",
+                    "source":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterMasters"
+                    },
+                    "priority": 160,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "http_in_any",
+                    "state": "present",
+                    "name": "HTTP incoming from anywhere",
+                    "protocol": "tcp",
+                    "application": "http",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0",
+                        "ports": "80"
+                    },
+                    "priority": 170,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "https_in_any",
+                    "state": "present",
+                    "name": "HTTPs incoming from anywhere",
+                    "protocol": "tcp",
+                    "application": "https",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0",
+                        "ports": "443"
+                    },
+                    "priority": 180,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "all_vnets_in_to_any",
+                    "state": "present",
+                    "name": "All incoming from Vnet to Vent",
+                    "protocol": "any",
+                    "application": "all",
+                    "direction": "inbound",
+                    "action": "deny",
+                    "source":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "destination":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "priority": 3000,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                }
+            ],
+            "clusters": [
+                {
+                    "state": "present",
+                    "code": "kub",
+                    "masterCount": 3,
+                    "masterVmType": "Standard_F2s_v2",
+                    "minWorkerCount": 2,
+                    "maxWorkerCount": 20,
+                    "vmType": "Standard_F16s_v2",
+                    "name": "kubernetes",
+                    "parameters": {}
+                }
+            ],
+            "service_deployments": [
+                {
+                    "code": "default",
+                    "parameters": {}
+                },
+                {
+                    "code": "hcs_common",
+                    "parameters":
+                    {
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_admin",
+                    "requests":
+                    {
+                        "cpu": "6",
+                        "memory": "7Gi"
+                    },
+                    "parameters":
+                    {
+                        "customer-properties": [],
+                        "initialpassword": [
+                            {
+                                "uid": "admin",
+                                "password": ""
+                            },
+                            {
+                                "uid": "anonymous",
+                                "password": ""
+                            }
+                        ]
+                    }
+                },
+                {
+                    "code": "hcs_platform_accstorefront",
+                    "name": "Storefront",
+                    "replicas": 2,
+                    "requests":
+                    {
+                        "cpu": "5",
+                        "memory": "6Gi"
+                    },
+                    "k8sServiceName": "accstorefront",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "accstorefront",
+                        "endpoint-code": "storefront",
+                        "endpoint-name": "Storefront",
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_platform_api",
+                    "name": "API",
+                    "replicas": 1,
+                    "requests":
+                    {
+                        "cpu": "1",
+                        "memory": "2Gi"
+                    },
+                    "k8sServiceName": "api",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "api",
+                        "endpoint-code": "api",
+                        "endpoint-name": "API",
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_platform_backoffice",
+                    "name": "Backoffice",
+                    "replicas": 2,
+                    "requests":
+                    {
+                        "cpu": "2",
+                        "memory": "6Gi"
+                    },
+                    "k8sServiceName": "backoffice",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "backoffice",
+                        "endpoint-code": "backoffice",
+                        "endpoint-name": "Backoffice",
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_platform_backgroundProcessing",
+                    "name": "Background processing",
+                    "replicas": 1,
+                    "requests":
+                    {
+                        "cpu": "4",
+                        "memory": "6Gi"
+                    },
+                    "k8sServiceName": "backgroundprocessing",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "backgroundprocessing",
+                        "endpoint-code": "processing",
+                        "endpoint-name": "Background Processing",
+                        "stop-before-snapshot": true,
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_search_solr",
+                    "name": "Solr",
+                    "replicas": 3,
+                    "storageClass": "managed-premium",
+                    "requests":
+                    {
+                        "cpu": "2",
+                        "memory": "2Gi",
+                        "storage": "10Gi"
+                    },
+                    "k8sServiceName": "solr",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "solr",
+                        "endpoint-code": "solr",
+                        "endpoint-name": "Solr",
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_search_zookeeper",
+                    "name": "Zookeeper",
+                    "replicas": 3,
+                    "storageClass": "managed-premium",
+                    "requests":
+                    {
+                        "cpu": "200m",
+                        "memory": "500Mi",
+                        "storage": "10Gi"
+                    },
+                    "k8sServiceName": "zookeeper"
+                },
+                {
+                    "code": "hcs_image_processing",
+                    "name": "Image Processing",
+                    "k8sServiceName": "imageprocessing",
+                    "replicas": 1,
+                    "requests": {
+                        "cpu": "1",
+                        "memory": "1Gi"
+                    }
+                },
+                {
+                    "code": "logging_kibana",
+                    "k8sServiceName": "logging/kibana",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "logs",
+                        "endpoint-customer-readonly": true,
+                        "endpoint-access": "ALLOW_ALL",
+                        "endpoint-code": "kibana",
+                        "endpoint-name": "Logging"
+                    }
+                },
+                {
+                    "code": "hcs_js_apps",
+                    "name": "JS Storefront",
+                    "replicas": 3,
+                    "requests":
+                    {
+                        "cpu": 1,
+                        "memory": "2Gi"
+                    },
+                    "k8sServiceName": "jsapps",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "jsapps",
+                        "endpoint-customer-readonly": false,
+                        "endpoint-code": "jsapps",
+                        "endpoint-name": "JS Storefront"
+                    }
+                },
+                {
+                    "code": "hcs_js_apps_ssr",
+                    "name": "JS SSR Storefront",
+                    "requests":
+                    {
+                        "cpu": 1,
+                        "memory": "1Gi"
+                    }
+                },
+                {
+                    "code": "apache_ingress",
+                    "name": "Apache Ingress",
+                    "requests": 
+                    {
+                        "cpu": "500m",
+                        "memory": "1000Mi"
+                    },
+                    "k8sServiceName": "apache2-igc",
+					"replicas": 3
+                },
+                {
+                    "code": "activegate",
+                    "name": "Dynatrace ActiveGate",
+                    "replicas": 1,
+                    "storageClass": "default",
+                    "requests": {
+                        "cpu": 2,
+                        "memory": "4Gi",
+                        "storage": "200Gi"
+                    },
+                    "k8sServiceName": "dynatrace/activegate",
+                    "parameters": {
+                        "create-endpoint": true,
+                        "dns-label": "activegate",
+                        "endpoint-code": "activegate",
+                        "endpoint-name": "Dynatrace ActiveGate",
+                        "endpoint-access": "ALLOW_ALL",
+                        "endpoint-customer-hidden": true
+                    }
+                }
+            ],
+            "webproxies": [
+                {
+                    "code": "public",
+                    "name": "Default",
+                    "access": "allow_all"
+                }
+            ]
+        },
+        "production":
+        {
+            "name": "Production premium",
+            "description": "For product premium purposes",
+            "parameters": {},
+            "media_storages": [
+                {
+                    "code": "medias",
+                    "name": "Medias",
+                    "replication": "STANDARD_RAGRS",
+                    "access_restriction": "ENVIRONMENT"
+                },
+                {
+                    "code": "snapshots",
+                    "name": "Snapshots",
+                    "replication": "STANDARD_RAGRS",
+                    "access_restriction": "PROJECT"
+                },
+                {
+                    "code": "business_metrics",
+                    "name": "Business metrics",
+                    "replication": "STANDARD_RAGRS",
+                    "access_restriction": "PROJECT"
+                },
+                {
+                    "code": "hotfolders",
+                    "name": "Hot folders",
+                    "replication": "STANDARD_RAGRS",
+                    "access_restriction": "PUBLIC"
+                },
+                {
+                    "code": "audit_logs",
+                    "replication": "STANDARD_RAGRS",
+                    "access_restriction": "ENVIRONMENT"
+                },
+                {
+                    "code": "logs",
+                    "replication": "STANDARD_RAGRS",
+                    "access_restriction": "PUBLIC"
+                }
+            ],
+            "database_servers": [
+                {
+                    "code": "server"
+                }
+            ],
+            "database_schemas": [
+                {
+                    "code": "db",
+                    "database_server":
+                    {
+                        "code": "server"
+                    },
+                    "database_performance": "VERY_FAST"
+                }
+            ],
+            "firewallrules": [
+                {
+                    "code": "https_in_dmz_master",
+                    "state": "present",
+                    "name": "HTTPs incoming from DMZ to masters",
+                    "protocol": "tcp",
+                    "application": "https",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "DmzEnvironment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterMasters",
+                        "ports": "443,4443"
+                    },
+                    "priority": 100,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_cluster_subnet",
+                    "state": "present",
+                    "name": "Any incoming from cluster subnet",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "priority": 110,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_cluster_subnet_to_VNet",
+                    "state": "present",
+                    "name": "Any incoming from MS virtual IP",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "168.63.129.16/32"
+                    },
+                    "destination":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "priority": 111,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_VNet_to_cluster_subnet",
+                    "state": "present",
+                    "name": "Any incoming from VNet to MS Virtual IP",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "destination":
+                    {
+                        "cidr": "168.63.129.16/32"
+                    },
+                    "priority": 112,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_subnet_to_cluster_subnet",
+                    "state": "present",
+                    "name": "Any incoming from VNet to cluster subnet",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "priority": 113,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+				{
+                    "code": "any_in_cluster_subnet_to_subnet",
+                    "state": "present",
+                    "name": "Any incoming from VNet to cluster subnet",
+                    "protocol": "any",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "ClusterSubnets"
+                    },
+                    "destination":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "priority": 113,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "ssh_in_dmz",
+                    "state": "present",
+                    "name": "SSH incoming from DMZ",
+                    "protocol": "tcp",
+                    "application": "ssh",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "DmzEnvironment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0",
+                        "ports": "22"
+                    },
+                    "priority": 120,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "any_in_subnet",
+                    "state": "present",
+                    "name": "Anything coming from the subnet",
+                    "protocol": "tcp",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "destination":
+                    {
+                        "cidr": "Environment"
+                    },
+                    "priority": 140,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "loadbalancer_in",
+                    "state": "present",
+                    "name": "Anything coming from the loadbalancer",
+                    "protocol": "tcp",
+                    "application": "any",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "AzureLoadBalancer"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "priority": 150,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "all_in_deny_to_master",
+                    "state": "present",
+                    "name": "Deny all incoming from anywhere to masters",
+                    "protocol": "tcp",
+                    "application": "https",
+                    "direction": "inbound",
+                    "action": "deny",
+                    "source":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "destination":
+                    {
+                        "cidr": "ClusterMasters"
+                    },
+                    "priority": 160,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "http_in_any",
+                    "state": "present",
+                    "name": "HTTP incoming from anywhere",
+                    "protocol": "tcp",
+                    "application": "http",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0",
+                        "ports": "80"
+                    },
+                    "priority": 170,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "https_in_any",
+                    "state": "present",
+                    "name": "HTTPs incoming from anywhere",
+                    "protocol": "tcp",
+                    "application": "https",
+                    "direction": "inbound",
+                    "source":
+                    {
+                        "cidr": "0.0.0.0/0"
+                    },
+                    "destination":
+                    {
+                        "cidr": "0.0.0.0/0",
+                        "ports": "443"
+                    },
+                    "priority": 180,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                },
+                {
+                    "code": "all_vnets_in_to_any",
+                    "state": "present",
+                    "name": "All incoming from Vnet to Vent",
+                    "protocol": "any",
+                    "application": "all",
+                    "direction": "inbound",
+                    "action": "deny",
+                    "source":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "destination":
+                    {
+                        "cidr": "VirtualNetwork"
+                    },
+                    "priority": 3000,
+                    "services": [
+                        {
+                            "code": "default"
+                        }
+                    ]
+                }
+            ],
+            "clusters": [
+                {
+                    "state": "present",
+                    "code": "kub",
+                    "masterCount": 3,
+                    "masterVmType": "Standard_F2s_v2",
+                    "minWorkerCount": 3,
+                    "maxWorkerCount": 20,
+                    "vmType": "Standard_F16s_v2",
+                    "name": "kubernetes",
+                    "parameters": {}
+                }
+            ],
+            "service_deployments": [
+                {
+                    "code": "default",
+                    "parameters": {}
+                },
+                {
+                    "code": "hcs_common",
+                    "parameters":
+                    {
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_admin",
+                    "requests":
+                    {
+                        "cpu": "6",
+                        "memory": "7Gi"
+                    },
+                    "parameters":
+                    {
+                        "customer-properties": [],
+                        "initialpassword": [
+                            {
+                                "uid": "admin",
+                                "password": ""
+                            },
+                            {
+                                "uid": "anonymous",
+                                "password": ""
+                            }
+                        ]
+                    }
+                },
+                {
+                    "code": "hcs_platform_accstorefront",
+                    "name": "Storefront",
+                    "replicas": 3,
+                    "requests":
+                    {
+                        "cpu": "5",
+                        "memory": "6Gi"
+                    },
+                    "k8sServiceName": "accstorefront",
+                    "autoscalingConfiguration": {
+                        "enabled": false,
+                        "metricStrategy": "CPU",
+                        "scalingStrategy": "MIN_MAX_REPLICAS",
+                        "minReplicas": 3,
+                        "maxReplicas": 6,
+                        "minMetricTarget": 30,
+                        "maxMetricTarget": 80
+                    },
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "accstorefront",
+                        "endpoint-code": "storefront",
+                        "endpoint-name": "Storefront",
+                        "externally-monitorable": true,
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_platform_api",
+                    "name": "API",
+                    "replicas": 2,
+                    "requests":
+                    {
+                        "cpu": "1",
+                        "memory": "2Gi"
+                    },
+                    "k8sServiceName": "api",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "api",
+                        "endpoint-code": "api",
+                        "endpoint-name": "API",
+                        "externally-monitorable": true,
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_platform_backoffice",
+                    "name": "Backoffice",
+                    "replicas": 2,
+                    "requests":
+                    {
+                        "cpu": "2",
+                        "memory": "6Gi"
+                    },
+                    "k8sServiceName": "backoffice",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "backoffice",
+                        "endpoint-code": "backoffice",
+                        "endpoint-name": "Backoffice",
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_platform_backgroundProcessing",
+                    "name": "Background processing",
+                    "replicas": 2,
+                    "requests":
+                    {
+                        "cpu": "4",
+                        "memory": "6Gi"
+                    },
+                    "k8sServiceName": "backgroundprocessing",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "backgroundprocessing",
+                        "endpoint-code": "processing",
+                        "endpoint-name": "Background Processing",
+                        "stop-before-snapshot": true,
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_search_solr",
+                    "name": "Solr",
+                    "storageClass": "managed-premium",
+                    "replicas": 4,
+                    "requests":
+                    {
+                        "cpu": "2",
+                        "memory": "4Gi",
+                        "storage": "10Gi"
+                    },
+                    "k8sServiceName": "solr",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "solr",
+                        "endpoint-code": "solr",
+                        "endpoint-name": "Solr",
+                        "customer-properties": []
+                    }
+                },
+                {
+                    "code": "hcs_image_processing",
+                    "name": "Image Processing",
+                    "k8sServiceName": "imageprocessing",
+                    "replicas": 1,
+                    "requests": {
+                        "cpu": "1",
+                        "memory": "1Gi"
+                    }
+                },
+                {
+                    "code": "hcs_search_zookeeper",
+                    "name": "Zookeeper",
+                    "storageClass": "managed-premium",
+                    "replicas": 3,
+                    "requests":
+                    {
+                        "cpu": "200m",
+                        "memory": "500Mi",
+                        "storage": "5Gi"
+                    },
+                    "k8sServiceName": "zookeeper"
+                },
+                {
+                    "code": "logging_kibana",
+                    "name": "Kibana",
+                    "k8sServiceName": "logging/kibana",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "logs",
+                        "endpoint-customer-readonly": true,
+                        "endpoint-access": "ALLOW_ALL",
+                        "endpoint-code": "kibana",
+                        "endpoint-name": "Logging"
+                    }
+                },
+                {
+                    "code": "hcs_js_apps",
+                    "name": "JS Storefront",
+                    "replicas": 3,
+                    "requests":
+                    {
+                        "cpu": 1,
+                        "memory": "2Gi"
+                    },
+                    "k8sServiceName": "jsapps",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "jsapps",
+                        "endpoint-customer-readonly": false,
+                        "endpoint-code": "jsapps",
+                        "endpoint-name": "JS Storefront",
+                        "externally-monitorable": true
+                    }
+                },
+                {
+                    "code": "hcs_js_apps_ssr",
+                    "name": "JS SSR Storefront",
+                    "requests":
+                    {
+                        "cpu": 1,
+                        "memory": "1Gi"
+                    }
+                },
+                {
+                    "code": "apache_ingress",
+                    "name": "Apache Ingress",
+                    "requests": 
+                    {
+                        "cpu": "500m",
+                        "memory": "1000Mi"
+                    },
+                    "k8sServiceName": "apache2-igc",
+					"replicas": 3
+                },
+                {
+                    "code": "activegate",
+                    "name": "Dynatrace ActiveGate",
+                    "replicas": 1,
+                    "storageClass": "default",
+                    "requests":
+                    {
+                        "cpu": 2,
+                        "memory": "4Gi",
+                        "storage": "200Gi"
+                    },
+                    "k8sServiceName": "dynatrace/activegate",
+                    "parameters":
+                    {
+                        "create-endpoint": true,
+                        "dns-label": "activegate",
+                        "endpoint-code": "activegate",
+                        "endpoint-name": "Dynatrace ActiveGate",
+                        "endpoint-access": "ALLOW_ALL",
+                        "endpoint-customer-hidden": true
+                    }
+                }
+            ],
+            "webproxies": [
+                {
+                    "code": "public",
+                    "name": "Default",
+                    "access": "allow_all"
+                }
+            ]
+        }
+    }
+}

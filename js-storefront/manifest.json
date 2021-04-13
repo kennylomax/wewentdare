@@ -1,0 +1,15 @@
+{
+    "applications": [
+        {
+            "name": "spartacusstore",
+            "path": "spartacusstore",
+            "enableSSR": true
+        },
+        {
+            "name": "b2bspastore",
+            "path": "b2bspastore",
+            "enableSSR": true
+        }
+    ],
+        "nodeVersion": "12"
+}
